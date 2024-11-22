@@ -48,8 +48,8 @@ def draw_material_override_button(self, context):
     row = layout.row(align=True)
     row.operator(
         "material.override_toggle",
-        text="Override On" if is_enabled else "Override Off",
-        icon='MATERIAL' if is_enabled else 'X',
+        text="" if is_enabled else "",
+        icon='MATERIAL' if is_enabled else 'META_DATA',
     )
 
 class ClayModeAddonPreferences(bpy.types.AddonPreferences):
@@ -64,17 +64,19 @@ class ClayModeAddonPreferences(bpy.types.AddonPreferences):
         # Add the Addon Updater settings UI
         addon_updater_ops.update_settings_ui(self, context)
 
+    
+
 def register():
+    bpy.utils.register_class(ClayModeAddonPreferences)
     addon_updater_ops.register(bl_info)
     bpy.utils.register_class(MATERIAL_OT_OverrideToggle)
-    bpy.utils.register_class(ClayModeAddonPreferences)
     bpy.types.VIEW3D_HT_header.append(draw_material_override_button)
 
 def unregister():
+    bpy.utils.unregister_class(ClayModeAddonPreferences)
     addon_updater_ops.unregister()
     bpy.types.VIEW3D_HT_header.remove(draw_material_override_button)
     bpy.utils.unregister_class(MATERIAL_OT_OverrideToggle)
-    bpy.utils.unregister_class(ClayModeAddonPreferences)
 
 if __name__ == "__main__":
     register()
