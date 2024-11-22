@@ -8,6 +8,7 @@ bl_info = {
 }
 
 import bpy
+from . import addon_updater_ops
 
 class MATERIAL_OT_OverrideToggle(bpy.types.Operator):
     bl_idname = "material.override_toggle"
@@ -52,11 +53,12 @@ def draw_material_override_button(self, context):
     )
 
 def register():
+    addon_updater_ops.register(bl_info)
     bpy.utils.register_class(MATERIAL_OT_OverrideToggle)
-    # Insert the button after the Overlays dropdown
     bpy.types.VIEW3D_HT_header.append(draw_material_override_button)
 
 def unregister():
+    addon_updater_ops.unregister()
     bpy.types.VIEW3D_HT_header.remove(draw_material_override_button)
     bpy.utils.unregister_class(MATERIAL_OT_OverrideToggle)
 
