@@ -51,7 +51,8 @@ def draw_material_override_button(self, context):
         text="" if is_enabled else "",
         icon='MATERIAL' if is_enabled else 'META_DATA',
     )
-
+    
+@addon_updater_ops.make_annotations
 class ClayModeAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
