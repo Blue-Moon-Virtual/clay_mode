@@ -51,10 +51,26 @@ def draw_material_override_button(self, context):
         text="" if is_enabled else "",
         icon='MATERIAL' if is_enabled else 'META_DATA',
     )
-    
+
 @addon_updater_ops.make_annotations
+
+
 class ClayModeAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
+
+
+    auto_check_update = bpy.props.BoolProperty(
+    name = "Auto-check for Update",
+    description = "If enabled, auto-check for updates using an interval",
+    default = False,
+    )
+    updater_interval_minutes = bpy.props.IntProperty(
+    name='Minutes',
+    description = "Number of minutes between checking for updates",
+    default=0,
+    min=0,
+    max=59
+    )
 
     def draw(self, context):
         layout = self.layout
