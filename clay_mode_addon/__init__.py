@@ -9,6 +9,22 @@ bl_info = {
 
 import bpy
 from . import addon_updater_ops
+import sys
+import subprocess
+from mathutils import Vector
+
+def ensure_dependencies():
+    try:
+        import google.generativeai  # Check if library is installed
+    except ModuleNotFoundError:
+        # Attempt to install the library in Blender's Python environment
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "google-generativeai"])
+            import google.generativeai  # Re-import after installation
+        except Exception as e:
+            print(f"Failed to install google-generativeai: {e}")
+            raise ModuleNotFoundError("google-generativeai is not installed and could not be installed.")
+        
 
 class MATERIAL_OT_OverrideToggle(bpy.types.Operator):
     bl_idname = "material.override_toggle"
@@ -58,63 +74,174 @@ def draw_material_override_button(self, context):
 class ClayModeAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
+    # Gemini API Key preference
+    api_key: bpy.props.StringProperty(
+        name="Gemini API Key",
+        description="API Key for Gemini generative AI",
+        default="",
+        subtype='PASSWORD'
+    )
 
-	# Addon updater preferences.
+    # Updater preferences
+    auto_check_update: bpy.props.BoolProperty(
+        name="Auto-check for Update",
+        description="If enabled, auto-check for updates using an interval",
+        default=False
+    )
 
-    auto_check_update = bpy.props.BoolProperty(
-		name="Auto-check for Update",
-		description="If enabled, auto-check for updates using an interval",
-		default=False)
+    updater_interval_months: bpy.props.IntProperty(
+        name="Months",
+        description="Number of months between checking for updates",
+        default=0,
+        min=0
+    )
 
-    updater_interval_months = bpy.props.IntProperty(
-		name='Months',
-		description="Number of months between checking for updates",
-		default=0,
-		min=0)
+    updater_interval_days: bpy.props.IntProperty(
+        name="Days",
+        description="Number of days between checking for updates",
+        default=7,
+        min=0,
+        max=31
+    )
 
-    updater_interval_days = bpy.props.IntProperty(
-		name='Days',
-		description="Number of days between checking for updates",
-		default=7,
-		min=0,
-		max=31)
+    updater_interval_hours: bpy.props.IntProperty(
+        name="Hours",
+        description="Number of hours between checking for updates",
+        default=0,
+        min=0,
+        max=23
+    )
 
-    updater_interval_hours = bpy.props.IntProperty(
-		name='Hours',
-		description="Number of hours between checking for updates",
-		default=0,
-		min=0,
-		max=23)
-
-    updater_interval_minutes = bpy.props.IntProperty(
-		name='Minutes',
-		description="Number of minutes between checking for updates",
-		default=0,
-		min=0,
-		max=59)
+    updater_interval_minutes: bpy.props.IntProperty(
+        name="Minutes",
+        description="Number of minutes between checking for updates",
+        default=0,
+        min=0,
+        max=59
+    )
 
     def draw(self, context):
         layout = self.layout
 
-        # Add your own preferences UI elements here
-        layout.label(text="Clay Mode Addon Preferences")
-        
-        # Add the Addon Updater settings UI
+        # Gemini API Key UI
+        layout.label(text="Gemini API Settings")
+        layout.prop(self, "api_key")
+
+        # Updater Settings UI
+        layout.label(text="Addon Updater Settings")
         addon_updater_ops.update_settings_ui(self, context)
 
-    
+
+
+class CLAY_OT_GroupWithSummary(bpy.types.Operator):
+    bl_idname = "clay.group_with_summary"
+    bl_label = "Group with AI Summary"
+    bl_description = "Group selected objects with an AI-generated summarized name"
+
+    def summarize_names(self, names):
+        ensure_dependencies()
+        import google.generativeai as genai
+
+        prefs = bpy.context.preferences.addons[__name__].preferences
+        api_key = prefs.api_key
+
+        if not api_key:
+            self.report({'ERROR'}, "API Key not set in preferences")
+            return "Group"
+
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = "Summarize the following object names into a short descriptive phrase:\n" + ", ".join(names)
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            self.report({'ERROR'}, f"Error summarizing names: {e}")
+            return "Group"
+
+    def execute(self, context):
+        objs = context.selected_objects
+        if not objs:
+            self.report({'WARNING'}, "No objects selected.")
+            return {'CANCELLED'}
+
+        names = [obj.name for obj in objs]
+        summary = self.summarize_names(names)
+
+        # Get majority collection and bounding box
+        col = max(objs[0].users_collection, key=lambda c: sum(o.name in c.objects for o in objs))
+        inf, ninf = float('inf'), float('-inf')
+        bounds = [inf, ninf, inf, ninf, inf, ninf]
+        for obj in objs:
+            for corner in obj.bound_box:
+                wc = obj.matrix_world @ Vector(corner)
+                bounds[0], bounds[1] = min(bounds[0], wc.x), max(bounds[1], wc.x)
+                bounds[2], bounds[3] = min(bounds[2], wc.y), max(bounds[3], wc.y)
+                bounds[4], bounds[5] = min(bounds[4], wc.z), max(bounds[5], wc.z)
+        center = [(bounds[i] + bounds[i+1]) * 0.5 for i in range(0, 6, 2)]
+        size = [bounds[i+1] - bounds[i] for i in range(0, 6, 2)]
+
+        # Create Empty
+        bpy.ops.object.empty_add(type='CUBE', location=center)
+        empty = context.object
+        empty.name = summary
+        empty.scale = [s * 0.5 for s in size]
+
+        # Link empty to collection
+        for c in empty.users_collection:
+            c.objects.unlink(empty)
+        col.objects.link(empty)
+
+        # Parent with keep transform
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in objs:
+            obj.select_set(True)
+        empty.select_set(True)
+        context.view_layer.objects.active = empty
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+
+        self.report({'INFO'}, f"Grouping done with name: {summary}")
+        return {'FINISHED'}
+
+
+
+
+class CLAY_PT_GroupPanel(bpy.types.Panel):
+    bl_label = "AI Grouping"
+    bl_idname = "CLAY_PT_group_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Tool'  # Creates a new "Tool" tab
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Group Objects with AI")
+        layout.operator("clay.group_with_summary", text="Group with AI Summary")
+
+
+
+
 
 def register():
-    bpy.utils.register_class(ClayModeAddonPreferences)
+    
     addon_updater_ops.register(bl_info)
+    bpy.utils.register_class(ClayModeAddonPreferences)
     bpy.utils.register_class(MATERIAL_OT_OverrideToggle)
+    bpy.utils.register_class(CLAY_OT_GroupWithSummary)
     bpy.types.VIEW3D_HT_header.append(draw_material_override_button)
+    bpy.utils.register_class(CLAY_PT_GroupPanel)
 
 def unregister():
+
+    bpy.utils.unregister_class(CLAY_PT_GroupPanel)
+    bpy.types.VIEW3D_HT_header.remove(draw_material_override_button)
+    bpy.utils.unregister_class(CLAY_OT_GroupWithSummary)
+    bpy.utils.unregister_class(MATERIAL_OT_OverrideToggle)
     bpy.utils.unregister_class(ClayModeAddonPreferences)
     addon_updater_ops.unregister()
-    bpy.types.VIEW3D_HT_header.remove(draw_material_override_button)
-    bpy.utils.unregister_class(MATERIAL_OT_OverrideToggle)
+    
+    
+    
 
 if __name__ == "__main__":
     register()
