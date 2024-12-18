@@ -2,7 +2,7 @@ bl_info = {
     "name": "Clay Mode",
     "description": "Simplifies enabling/disabling material override in the View Layer.",
     "author": "Tjomma",
-    "version": (1, 1),
+    "version": (1, 2),
     "blender": (4, 2, 2),
     "category": "Material"
 }
@@ -82,6 +82,14 @@ class ClayModeAddonPreferences(bpy.types.AddonPreferences):
         subtype='PASSWORD'
     )
 
+
+    prompt_template: bpy.props.StringProperty(
+        name="Prompt Template",
+        description="Template for the AI-generated summaries. Use {names} to include object names.",
+        default="Summarize the following object names into a short descriptive phrase:\n{names}"
+    )
+    
+
     # Updater preferences
     auto_check_update: bpy.props.BoolProperty(
         name="Auto-check for Update",
@@ -127,6 +135,10 @@ class ClayModeAddonPreferences(bpy.types.AddonPreferences):
         layout.label(text="Gemini API Settings")
         layout.prop(self, "api_key")
 
+        layout.label(text="AI Prompt Template")
+        layout.prop(self, "prompt_template", text="Prompt")
+
+
         # Updater Settings UI
         layout.label(text="Addon Updater Settings")
         addon_updater_ops.update_settings_ui(self, context)
@@ -144,6 +156,7 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
 
         prefs = bpy.context.preferences.addons[__name__].preferences
         api_key = prefs.api_key
+        prompt_template = prefs.prompt_template
 
         if not api_key:
             self.report({'ERROR'}, "API Key not set in preferences")
@@ -152,12 +165,24 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = "Summarize the following object names into a short descriptive phrase:\n" + ", ".join(names)
+
+            # Limit to 10 evenly spaced names
+            max_names = 10
+            if len(names) > max_names:
+                step = max(1, len(names) // max_names)
+                selected_names = names[::step][:max_names]
+            else:
+                selected_names = names
+
+            # Generate the prompt using the template
+            prompt = prompt_template.format(names=", ".join(selected_names))
             response = model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
             self.report({'ERROR'}, f"Error summarizing names: {e}")
             return "Group"
+
+
 
     def execute(self, context):
         objs = context.selected_objects
