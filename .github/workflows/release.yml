@@ -13,9 +13,7 @@ jobs:
 
       - name: Create ZIP file
         run: |
-          mkdir clay_mode_addon
-          cp -r * clay_mode_addon
-          zip -r clay_mode_addon.zip clay_mode_addon
+          zip -r clay_mode_addon.zip clay_mode_addon -x "*.git*" "*.github*"
 
       - name: Upload release ZIP
         uses: softprops/action-gh-release@v1
