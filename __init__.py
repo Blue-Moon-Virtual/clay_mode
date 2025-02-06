@@ -1,8 +1,8 @@
 bl_info = {
-    "name": "Clay Mode",
+    "name": "clay_mode",
     "description": "Simplifies enabling/disabling material override in the View Layer.",
     "author": "Tjomma",
-    "version": (1, 3),
+    "version": (1, 4, 0),
     "blender": (4, 2, 2),
     "category": "Material"
 }
