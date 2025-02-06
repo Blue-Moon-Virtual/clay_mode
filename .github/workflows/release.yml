@@ -2,7 +2,7 @@ name: Build Release
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v[0-9]+\\.[0-9]+\\.[0-9]+"]
 
 permissions:
   contents: write
@@ -11,19 +11,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout the repository into a subdirectory.
+      # 1. Check out the repository into a subdirectory.
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           path: ${{ github.event.repository.name }}
 
-      # 2. Zip the repository folder (excluding .git files)
-      - name: Zip Repository (excludes .git*)
+      # 2. Set up the version variable (extracts version from tag, stripping any leading "v").
+      - name: Set version
         run: |
-          cd ${{ github.event.repository.name }}
-          zip -r ../${{ github.event.repository.name }}.zip . -x "*.git*"
+          VERSION="${GITHUB_REF##*/}"
+          VERSION="${VERSION#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Version is ${VERSION}"
 
-      # 3. Create a GitHub release using the official action.
+      # 3. Prepare the add-on folder structure.
+      # Create a temporary folder "release/clay_mode" and copy all repository contents (the add-on) into it.
+      - name: Prepare add-on folder
+        run: |
+          mkdir -p release/clay_mode
+          # Enable copying of hidden files (like .gitignore) if needed.
+          shopt -s dotglob
+          cp -r ${GITHUB_WORKSPACE}/${{ github.event.repository.name }}/. release/clay_mode
+
+      # 4. Create the zip file.
+      # This will produce a zip file that contains a single top-level folder "clay_mode".
+      - name: Create release zip
+        run: |
+          cd release
+          zip -r ../clay_mode-${VERSION}.zip clay_mode
+
+      # 5. Create a GitHub release.
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -35,13 +53,13 @@ jobs:
           draft: false
           prerelease: false
 
-      # 4. Upload the zip file as a release asset.
+      # 6. Upload the zip file as a release asset.
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.event.repository.name }}.zip
-          asset_name: ${{ github.event.repository.name }}.zip
+          asset_path: clay_mode-${{ env.VERSION }}.zip
+          asset_name: clay_mode-${{ env.VERSION }}.zip
           asset_content_type: application/zip
