@@ -1,43 +1,55 @@
-name: Build and Upload Blender Addon Release ZIP
+name: Create Blender Addon Release
 
+# Trigger this workflow when a release is published.
 on:
-  # This workflow runs when a GitHub release is published.
   release:
     types: [published]
 
 jobs:
-  build_release:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      # Check out the repository code.
+      # Step 1: Check out the repository.
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Prepare the proper folder structure for the Blender addon.
-      # Here we copy the addon folder (currently named "claymode-1.3")
-      # to a new folder (named "claymode") so that the ZIP file,
-      # when extracted, contains a single folder "claymode" with your files.
-      - name: Prepare Blender Addon Folder
+      # Step 2: Determine the version from the tag name.
+      - name: Set up version variable
+        id: get_version
+        shell: bash
         run: |
-          # (Adjust these names if your repository layout differs)
-          cp -r claymode-1.3 claymode
-          # Verify the new folder structure (optional debugging)
-          ls -l
-
-      # Create the release ZIP.
-      - name: Create Release ZIP
+          # GITHUB_REF is something like "refs/tags/1.3" or "refs/tags/v1.3".
+          # This extracts the part after the last slash.
+          VERSION="${GITHUB_REF##*/}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Detected version: ${VERSION}"
+          
+      # Step 3: Prepare the add-on folder for release.
+      # Blender requires that when you install from a zip, the zip must contain a folder
+      # named exactly as the add-on’s Python module (typically what’s declared in __init__.py).
+      # In this example we assume your repository contains a folder named "claymode".
+      - name: Prepare add-on for release
         run: |
-          # This zips the "claymode" folder so that the archive has a single top-level folder.
-          zip -r clay_mode.zip claymode
+          mkdir -p release
+          # Copy the add-on folder into the release directory.
+          # (If your repository folder name includes a version, adjust this copy so that the folder name becomes simply "claymode".)
+          cp -r claymode release/claymode
 
-      # Upload the ZIP file as an asset of the release.
+      # Step 4: Create the release zip.
+      # The zip file is named with the version (e.g. clay_mode-1.3.zip)
+      # but its internal folder is "claymode" (without a version suffix) so that Blender can install it.
+      - name: Create release zip
+        run: |
+          cd release
+          zip -r ../clay_mode-${VERSION}.zip claymode
+
+      # Step 5: Upload the zip file to the GitHub release.
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./clay_mode.zip
-          asset_name: clay_mode.zip
+          asset_path: ./clay_mode-${{ env.VERSION }}.zip
+          asset_name: clay_mode-${{ env.VERSION }}.zip
           asset_content_type: application/zip
