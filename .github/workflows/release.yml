@@ -1,29 +1,31 @@
-# Build a release containing a filtered .zip of the repository contents
-# when a new semantic version tag is pushed (e.g. v1.0.0).
 name: Build Release
 
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
 
+# Grant the workflow permission to write to releases and contents.
+permissions:
+  contents: write
+  releases: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. Check out the repository into a subdirectory
+      # 1. Checkout the repository into a subdirectory.
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           path: ${{ github.event.repository.name }}
 
-      # 2. Zip the repository folder (this creates a zip with an outer folder matching your repository name,
-      # which should match the add-on package name expected by Blender)
+      # 2. Zip the repository folder (which should be your add-on).
       - name: Zip Repository (excludes .git*)
         run: |
           cd ${{ github.event.repository.name }}
           zip -r ../${{ github.event.repository.name }}.zip . -x "*.git*"
 
-      # 3. Create a GitHub release using the official action
+      # 3. Create a GitHub release using the official action.
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -35,7 +37,7 @@ jobs:
           draft: false
           prerelease: false
 
-      # 4. Upload the zip file as a release asset
+      # 4. Upload the zip file as a release asset.
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
