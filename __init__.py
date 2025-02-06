@@ -234,60 +234,60 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
 
 
 
-def parent_hierarchy_to_empty(obj, new_parent):
-    # Store the original parent
-    original_parent = obj.parent
+    def parent_hierarchy_to_empty(obj, new_parent):
+        # Store the original parent
+        original_parent = obj.parent
 
-    # Parent the object to the new empty
-    obj.parent = new_parent
+        # Parent the object to the new empty
+        obj.parent = new_parent
 
-    # Recursively apply to all children
-    for child in obj.children:
-        parent_hierarchy_to_empty(child, obj)
+        # Recursively apply to all children
+        for child in obj.children:
+            parent_hierarchy_to_empty(child, obj)
 
-    # Restore the original parent
-    obj.parent = original_parent
+        # Restore the original parent
+        obj.parent = original_parent
 
-def execute(self, context):
-    objs = context.selected_objects
-    if not objs:
-        self.report({'WARNING'}, "No objects selected.")
-        return {'CANCELLED'}
 
-    names = [obj.name for obj in objs]
-    summary = self.summarize_names(names)
+    def execute(self, context):
+        objs = context.selected_objects
+        if not objs:
+            self.report({'WARNING'}, "No objects selected.")
+            return {'CANCELLED'}
 
-    # Get majority collection and bounding box
-    col = max(objs[0].users_collection, key=lambda c: sum(o.name in c.objects for o in objs))
-    inf, ninf = float('inf'), float('-inf')
-    bounds = [inf, ninf, inf, ninf, inf, ninf]
-    for obj in objs:
-        for corner in obj.bound_box:
-            wc = obj.matrix_world @ Vector(corner)
-            bounds[0], bounds[1] = min(bounds[0], wc.x), max(bounds[1], wc.x)
-            bounds[2], bounds[3] = min(bounds[2], wc.y), max(bounds[3], wc.y)
-            bounds[4], bounds[5] = min(bounds[4], wc.z), max(bounds[5], wc.z)
-    center = [(bounds[i] + bounds[i+1]) * 0.5 for i in range(0, 6, 2)]
-    size = [bounds[i+1] - bounds[i] for i in range(0, 6, 2)]
+        names = [obj.name for obj in objs]
+        summary = self.summarize_names(names)
 
-    # Create Empty
-    bpy.ops.object.empty_add(type='CUBE', location=center)
-    empty = context.object
-    empty.name = summary
-    empty.scale = [s * 0.5 for s in size]
+        # Get majority collection and bounding box
+        col = max(objs[0].users_collection, key=lambda c: sum(o.name in c.objects for o in objs))
+        inf, ninf = float('inf'), float('-inf')
+        bounds = [inf, ninf, inf, ninf, inf, ninf]
+        for obj in objs:
+            for corner in obj.bound_box:
+                wc = obj.matrix_world @ Vector(corner)
+                bounds[0], bounds[1] = min(bounds[0], wc.x), max(bounds[1], wc.x)
+                bounds[2], bounds[3] = min(bounds[2], wc.y), max(bounds[3], wc.y)
+                bounds[4], bounds[5] = min(bounds[4], wc.z), max(bounds[5], wc.z)
+        center = [(bounds[i] + bounds[i+1]) * 0.5 for i in range(0, 6, 2)]
+        size = [bounds[i+1] - bounds[i] for i in range(0, 6, 2)]
 
-    # Link empty to collection
-    for c in empty.users_collection:
-        c.objects.unlink(empty)
-    col.objects.link(empty)
+        # Create Empty
+        bpy.ops.object.empty_add(type='CUBE', location=center)
+        empty = context.object
+        empty.name = summary
+        empty.scale = [s * 0.5 for s in size]
 
-    # Parent each selected object while preserving hierarchy
-    for obj in objs:
-        parent_hierarchy_to_empty(obj, empty)
+        # Link empty to collection
+        for c in empty.users_collection:
+            c.objects.unlink(empty)
+        col.objects.link(empty)
 
-    self.report({'INFO'}, f"Grouping done with name: {summary}")
-    return {'FINISHED'}
+        # Parent each selected object while preserving hierarchy
+        for obj in objs:
+            parent_hierarchy_to_empty(obj, empty)
 
+        self.report({'INFO'}, f"Grouping done with name: {summary}")
+        return {'FINISHED'}
 
 
 
