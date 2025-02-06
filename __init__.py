@@ -131,7 +131,6 @@ class ClayModeAddonPreferences(bpy.types.AddonPreferences):
     api_key: bpy.props.StringProperty(
         name="Gemini API Key",
         description="API Key for Gemini generative AI",
-        default="",
     )
 
     prompt_template: bpy.props.StringProperty(
