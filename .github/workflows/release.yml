@@ -11,20 +11,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: List repository contents for debugging
+      - name: List repository contents (for debugging)
         run: ls -R
 
-      - name: Rename the extracted folder correctly
+      - name: Detect the correct folder and rename if needed
         run: |
-          # Find the auto-generated GitHub folder (e.g., clay_mode-1.3)
-          AUTO_FOLDER=$(ls -d */ | grep -E '^clay_mode-' | head -n 1 | tr -d /)
-          if [ -z "$AUTO_FOLDER" ]; then
-            echo "No valid add-on folder found!"
-            exit 1
+          if [ -d "clay_mode_addon" ]; then
+            echo "Found expected clay_mode_addon folder."
+          else
+            echo "Renaming repository folder to clay_mode_addon..."
+            REPO_FOLDER=$(basename $(pwd))
+            mv "$REPO_FOLDER" "clay_mode_addon"
           fi
-          
-          echo "Found GitHub source folder: $AUTO_FOLDER"
-          mv "$AUTO_FOLDER" "clay_mode_addon"
 
       - name: Create ZIP file
         run: zip -r clay_mode_addon.zip clay_mode_addon -x "*.git*" "*.github*"
