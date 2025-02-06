@@ -62,7 +62,6 @@ This project is licensed under the **MIT License**.
 
 ## **📣 Contributors**
 - **[@lilbentley](https://github.com/lilbentley)** - Creator
-- **[@yourname](https://github.com/yourname)** - Contributor
 
 For contributions, submit a **pull request** or create an **issue** in the repository.
 
