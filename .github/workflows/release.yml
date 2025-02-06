@@ -1,33 +1,43 @@
-name: Build Release ZIP
+name: Build and Upload Blender Addon Release ZIP
 
 on:
+  # This workflow runs when a GitHub release is published.
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  build:
+  build_release:
     runs-on: ubuntu-latest
+
     steps:
+      # Check out the repository code.
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: List repository contents (for debugging)
-        run: ls -R
-
-      - name: Detect the correct folder and rename if needed
+      # Prepare the proper folder structure for the Blender addon.
+      # Here we copy the addon folder (currently named "claymode-1.3")
+      # to a new folder (named "claymode") so that the ZIP file,
+      # when extracted, contains a single folder "claymode" with your files.
+      - name: Prepare Blender Addon Folder
         run: |
-          if [ -d "clay_mode_addon" ]; then
-            echo "Found expected clay_mode_addon folder."
-          else
-            echo "Renaming repository folder to clay_mode_addon..."
-            REPO_FOLDER=$(basename $(pwd))
-            mv "$REPO_FOLDER" "clay_mode_addon"
-          fi
+          # (Adjust these names if your repository layout differs)
+          cp -r claymode-1.3 claymode
+          # Verify the new folder structure (optional debugging)
+          ls -l
 
-      - name: Create ZIP file
-        run: zip -r clay_mode_addon.zip clay_mode_addon -x "*.git*" "*.github*"
+      # Create the release ZIP.
+      - name: Create Release ZIP
+        run: |
+          # This zips the "claymode" folder so that the archive has a single top-level folder.
+          zip -r clay_mode.zip claymode
 
-      - name: Upload release ZIP
-        uses: softprops/action-gh-release@v1
+      # Upload the ZIP file as an asset of the release.
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: clay_mode_addon.zip
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./clay_mode.zip
+          asset_name: clay_mode.zip
+          asset_content_type: application/zip
