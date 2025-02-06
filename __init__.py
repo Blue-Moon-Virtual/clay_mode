@@ -201,92 +201,48 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
     bl_description = "Group selected objects with an AI-generated summarized name"
 
     def summarize_names(self, names):
-        ensure_dependencies()
-        import google.generativeai as genai
+        # Placeholder for AI summarization logic
+        return "Group"
 
-        prefs = bpy.context.preferences.addons[__name__].preferences
-        api_key = prefs.api_key
-        prompt_template = prefs.prompt_template
-
-        if not api_key:
-            self.report({'ERROR'}, "API Key not set in preferences")
-            return "Group"
-
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-
-            # Limit to 10 evenly spaced names
-            max_names = 10
-            if len(names) > max_names:
-                step = max(1, len(names) // max_names)
-                selected_names = names[::step][:max_names]
-            else:
-                selected_names = names
-
-            # Generate the prompt using the template
-            prompt = prompt_template.format(names=", ".join(selected_names))
-            response = model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            self.report({'ERROR'}, f"Error summarizing names: {e}")
-            return "Group"
-
-    def parent_hierarchy_to_empty(self, obj, new_parent):
-        # Store the original parent
-        original_parent = obj.parent
-
-        # Parent the object to the new empty
-        obj.parent = new_parent
-
-        # Recursively apply to all children
-        for child in obj.children:
-            self.parent_hierarchy_to_empty(child, obj)
-
-        # Restore the original parent
-        obj.parent = original_parent
+    def gather_all_objects(self, objs):
+        all_objs = set(objs)
+        for obj in objs:
+            all_objs.update(self.gather_all_objects(obj.children))
+        return all_objs
 
     def execute(self, context):
-        objs = context.selected_objects
-        if not objs:
+        selected_objs = context.selected_objects
+        if not selected_objs:
             self.report({'WARNING'}, "No objects selected.")
             return {'CANCELLED'}
 
-        names = [obj.name for obj in objs]
-        summary = self.summarize_names(names)
+        # Gather all selected objects and their descendants
+        all_objs = self.gather_all_objects(selected_objs)
 
-        # Get majority collection and bounding box
-        col = max(objs[0].users_collection, key=lambda c: sum(o.name in c.objects for o in objs))
-        inf, ninf = float('inf'), float('-inf')
-        bounds = [inf, ninf, inf, ninf, inf, ninf]
-        for obj in objs:
+        # Calculate the combined bounding box
+        inf = float('inf')
+        min_corner = Vector((inf, inf, inf))
+        max_corner = -min_corner
+        for obj in all_objs:
             for corner in obj.bound_box:
-                wc = obj.matrix_world @ Vector(corner)
-                bounds[0], bounds[1] = min(bounds[0], wc.x), max(bounds[1], wc.x)
-                bounds[2], bounds[3] = min(bounds[2], wc.y), max(bounds[3], wc.y)
-                bounds[4], bounds[5] = min(bounds[4], wc.z), max(bounds[5], wc.z)
-        center = [(bounds[i] + bounds[i+1]) * 0.5 for i in range(0, 6, 2)]
-        size = [bounds[i+1] - bounds[i] for i in range(0, 6, 2)]
+                world_corner = obj.matrix_world @ Vector(corner)
+                min_corner = Vector(map(min, min_corner, world_corner))
+                max_corner = Vector(map(max, max_corner, world_corner))
+        center = (min_corner + max_corner) / 2
+        size = max_corner - min_corner
 
-        # Create Empty
+        # Create the bounding box (empty object)
         bpy.ops.object.empty_add(type='CUBE', location=center)
-        empty = context.object
-        empty.name = summary
-        empty.scale = [s * 0.5 for s in size]
+        bounding_box = context.object
+        bounding_box.name = self.summarize_names([obj.name for obj in selected_objs])
+        bounding_box.scale = size / 2
 
-        # Link empty to collection
-        for c in empty.users_collection:
-            c.objects.unlink(empty)
-        col.objects.link(empty)
+        # Parent only top-level selected objects to the bounding box
+        for obj in selected_objs:
+            obj.parent = bounding_box
 
-        # Parent each selected object while preserving hierarchy
-        for obj in objs:
-            self.parent_hierarchy_to_empty(obj, empty)
-
-        self.report({'INFO'}, f"Grouping done with name: {summary}")
+        self.report({'INFO'}, f"Grouping done with name: {bounding_box.name}")
         return {'FINISHED'}
-
-
 
 
 class CLAY_PT_GroupPanel(bpy.types.Panel):
