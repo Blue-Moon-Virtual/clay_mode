@@ -232,9 +232,7 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
             self.report({'ERROR'}, f"Error summarizing names: {e}")
             return "Group"
 
-
-
-    def parent_hierarchy_to_empty(obj, new_parent):
+    def parent_hierarchy_to_empty(self, obj, new_parent):
         # Store the original parent
         original_parent = obj.parent
 
@@ -243,11 +241,10 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
 
         # Recursively apply to all children
         for child in obj.children:
-            parent_hierarchy_to_empty(child, obj)
+            self.parent_hierarchy_to_empty(child, obj)
 
         # Restore the original parent
         obj.parent = original_parent
-
 
     def execute(self, context):
         objs = context.selected_objects
@@ -284,7 +281,7 @@ class CLAY_OT_GroupWithSummary(bpy.types.Operator):
 
         # Parent each selected object while preserving hierarchy
         for obj in objs:
-            parent_hierarchy_to_empty(obj, empty)
+            self.parent_hierarchy_to_empty(obj, empty)
 
         self.report({'INFO'}, f"Grouping done with name: {summary}")
         return {'FINISHED'}
