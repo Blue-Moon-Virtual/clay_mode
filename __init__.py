@@ -7,6 +7,8 @@ bl_info = {
     "category": "Material"
 }
 
+# Attempt 1
+
 import bpy
 from . import addon_updater_ops
 import sys
