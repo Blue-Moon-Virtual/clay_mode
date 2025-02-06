@@ -1,6 +1,5 @@
 name: Create Blender Addon Release
 
-# Trigger this workflow when a release is published.
 on:
   release:
     types: [published]
@@ -13,31 +12,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Determine the version from the tag name.
+      # Step 2: Set up version variable (extracted from the tag).
       - name: Set up version variable
         id: get_version
-        shell: bash
         run: |
-          # GITHUB_REF is something like "refs/tags/1.3" or "refs/tags/v1.3".
-          # This extracts the part after the last slash.
+          # This extracts the tag name (e.g. "v1.3" or "1.3") from GITHUB_REF.
           VERSION="${GITHUB_REF##*/}"
+          # If you want to strip a leading "v", uncomment the next line:
+          # VERSION="${VERSION#v}"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "Detected version: ${VERSION}"
-          
-      # Step 3: Prepare the add-on folder for release.
-      # Blender requires that when you install from a zip, the zip must contain a folder
-      # named exactly as the add-on’s Python module (typically what’s declared in __init__.py).
-      # In this example we assume your repository contains a folder named "claymode".
+
+      # (Optional) Debug: List root directory to verify folder names.
+      - name: List repository root
+        run: ls -la
+
+      # Step 3: Prepare the add-on folder.
+      # Blender requires that the internal folder name (when installing from a zip)
+      # exactly matches the module name declared in __init__.py.
+      # This step copies your add-on folder into a temporary "release" folder.
       - name: Prepare add-on for release
         run: |
           mkdir -p release
-          # Copy the add-on folder into the release directory.
-          # (If your repository folder name includes a version, adjust this copy so that the folder name becomes simply "claymode".)
-          cp -r claymode release/claymode
+          # Check if the folder exists as "claymode" or "clay_mode" and copy it as "claymode".
+          if [ -d claymode ]; then
+            echo "Found folder 'claymode'"
+            cp -r claymode release/claymode
+          elif [ -d clay_mode ]; then
+            echo "Found folder 'clay_mode' (will be renamed to 'claymode' in the zip)"
+            cp -r clay_mode release/claymode
+          else
+            echo "Error: Could not find your add-on folder. Ensure that a folder named 'claymode' or 'clay_mode' exists at the repository root."
+            exit 1
+          fi
 
       # Step 4: Create the release zip.
       # The zip file is named with the version (e.g. clay_mode-1.3.zip)
-      # but its internal folder is "claymode" (without a version suffix) so that Blender can install it.
+      # and its internal folder is named "claymode", which Blender expects.
       - name: Create release zip
         run: |
           cd release
