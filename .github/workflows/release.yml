@@ -11,9 +11,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Create ZIP file
+      - name: List repository contents (for debugging)
+        run: ls -R
+
+      - name: Find the correct add-on folder
         run: |
-          zip -r clay_mode_addon.zip clay_mode_addon -x "*.git*" "*.github*"
+          if [ -d "clay_mode_addon" ]; then
+            echo "Found clay_mode_addon at root."
+            zip -r clay_mode_addon.zip clay_mode_addon -x "*.git*" "*.github*"
+          elif [ -d "$(ls -d */ | head -n 1)" ]; then
+            ADDON_FOLDER=$(ls -d */ | head -n 1 | tr -d /)
+            echo "Found add-on folder: $ADDON_FOLDER"
+            zip -r clay_mode_addon.zip "$ADDON_FOLDER" -x "*.git*" "*.github*"
+          else
+            echo "No valid add-on folder found!"
+            exit 1
+          fi
 
       - name: Upload release ZIP
         uses: softprops/action-gh-release@v1
