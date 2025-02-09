@@ -18,6 +18,7 @@
 ---
 
 ## **🛠️ Installation**
+0. **WORKS ONLY WITH BLENDER 4.3.2 or onward!**
 1. **Download the latest release** from [GitHub Releases](https://github.com/lilbentley/clay_mode/releases).
 2. Open **Blender**, go to **Edit > Preferences > Add-ons**.
 3. Click **Install**, select the downloaded `.zip` file, and click **Install Add-on**.
