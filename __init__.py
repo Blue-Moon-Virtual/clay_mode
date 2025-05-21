@@ -2,7 +2,7 @@ bl_info = {
     "name": "ClayMode",
     "description": "Simplifies enabling/disabling material override in the View Layer.",
     "author": "Blue Moon Virtual",
-    "version": (1, 5, 0),
+    "version": (1, 6, 0),
     "blender": (4, 2, 2),
     "category": "Material"
 }
@@ -11,7 +11,10 @@ import bpy
 from . import addon_updater_ops
 import sys
 import subprocess
-from mathutils import Vector
+
+
+def ensure_dependencies():
+    pass  # No dependencies needed after removing AI grouping
 
 def create_clay_material():
     """Create a material for architectural visualization:
@@ -58,6 +61,7 @@ def create_clay_material():
     links.new(mix_shader.outputs['Shader'], output.inputs['Surface'])  # Mix Shader -> Output
 
     return mat
+
 
 class MATERIAL_OT_OverrideToggle(bpy.types.Operator):
     bl_idname = "material.override_toggle"
@@ -107,15 +111,68 @@ def draw_material_override_button(self, context):
 
 @addon_updater_ops.make_annotations
 
+class ClayModeAddonPreferences(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    # Updater preferences only
+    auto_check_update: bpy.props.BoolProperty(
+        name="Auto-check for Update",
+        description="If enabled, auto-check for updates using an interval",
+        default=False
+    ) 
+
+    updater_interval_months: bpy.props.IntProperty(
+        name="Months",
+        description="Number of months between checking for updates",
+        default=0,
+        min=0
+    )
+
+    updater_interval_days: bpy.props.IntProperty(
+        name="Days",
+        description="Number of days between checking for updates",
+        default=7,
+        min=0,
+        max=31
+    )
+
+    updater_interval_hours: bpy.props.IntProperty(
+        name="Hours",
+        description="Number of hours between checking for updates",
+        default=0,
+        min=0,
+        max=23
+    )
+
+    updater_interval_minutes: bpy.props.IntProperty(
+        name="Minutes",
+        description="Number of minutes between checking for updates",
+        default=0,
+        min=0,
+        max=59
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        # Updater Settings UI
+        layout.label(text="Addon Updater Settings")
+        addon_updater_ops.update_settings_ui(self, context)
+
+
 def register():
     addon_updater_ops.register(bl_info)
+    bpy.utils.register_class(ClayModeAddonPreferences)
     bpy.utils.register_class(MATERIAL_OT_OverrideToggle)
     bpy.types.VIEW3D_HT_header.append(draw_material_override_button)
 
 def unregister():
     bpy.types.VIEW3D_HT_header.remove(draw_material_override_button)
     bpy.utils.unregister_class(MATERIAL_OT_OverrideToggle)
+    bpy.utils.unregister_class(ClayModeAddonPreferences)
     addon_updater_ops.unregister()
     
+    
+    
+
 if __name__ == "__main__":
     register()

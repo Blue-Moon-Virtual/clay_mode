@@ -6,6 +6,7 @@
 - **Material Override Toggle** 🎨
   - Enables and disables Material Override in the **View Layer**.
   - Uses a **custom clay material** that differentiates objects based on their Object Index.
+
 - **Auto-Updater** 🚀
   - Checks for updates automatically or manually.
   - Downloads and installs new versions seamlessly.
@@ -34,6 +35,11 @@
 1. Go to **Edit > Preferences > Add-ons > ClayMode**.
 2. Click **Check for Updates**.
 3. If an update is available, click **Update** to install the latest version.
+
+---
+
+## **⚙️ Configuration**
+- No additional configuration is required.
 
 ---
 
