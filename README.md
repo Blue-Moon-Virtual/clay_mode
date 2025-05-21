@@ -1,6 +1,6 @@
-# Clay Mode Addon
+# ClayMode Addon
 
-**Clay Mode** is a Blender add-on designed to simplify **Material Override** workflows and enhance object grouping using **AI-generated summaries**. It also includes an **automatic updater** for seamless version updates.
+**ClayMode** is a Blender add-on designed to simplify **Material Override** workflows and enhance object grouping using **AI-generated summaries**. It also includes an **automatic updater** for seamless version updates.
 
 ## **📌 Features**
 - **Material Override Toggle** 🎨
@@ -42,7 +42,7 @@
 4. The AI generates a **descriptive group name** and creates an **Empty** for better organization.
 
 ### **🔄 Updating the Addon**
-1. Go to **Edit > Preferences > Add-ons > Clay Mode**.
+1. Go to **Edit > Preferences > Add-ons > ClayMode**.
 2. Click **Check for Updates**.
 3. If an update is available, click **Update** to install the latest version.
 
@@ -50,7 +50,7 @@
 
 ## **⚙️ Configuration**
 ### **🔑 Setting Up the API Key**
-- Go to **Edit > Preferences > Add-ons > Clay Mode**.
+- Go to **Edit > Preferences > Add-ons > ClayMode**.
 - Enter your **Google Gemini API Key** (required for AI grouping).
 - Customize the **AI prompt template** as needed.
 
@@ -63,6 +63,7 @@ This project is licensed under the **MIT License**.
 
 ## **📣 Contributors**
 - **[@lilbentley](https://github.com/lilbentley)** - Creator
+- **[@Blue-Moon-Virtual](https://github.com/Blue-Moon-Virtual)** - Maintainer
 
 For contributions, submit a **pull request** or create an **issue** in the repository.
 
